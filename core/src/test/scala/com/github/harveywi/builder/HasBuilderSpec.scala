@@ -29,7 +29,7 @@ object HasBuilderSpec {
   // Simple single-parameter tests 
   case class TestInt(x: Int)
   object TestInt extends HasBuilder[TestInt] {
-    val isoContainer = createIsoContainer(apply _, unapply _)
+    val gen = Generic[TestInt]
 
     object X extends Param[Int]
     val fieldsContainer = createFieldsContainer(X :: HNil)
@@ -37,7 +37,7 @@ object HasBuilderSpec {
 
   case class TestIntOptional(x: Int)
   object TestIntOptional extends HasBuilder[TestIntOptional] {
-    val isoContainer = createIsoContainer(apply _, unapply _)
+    val gen = Generic[TestIntOptional]
 
     object X extends OptParam[Int](8675309)
     val fieldsContainer = createFieldsContainer(X :: HNil)
@@ -46,7 +46,7 @@ object HasBuilderSpec {
   // Multiple parameters test
   case class TestIntStringChar(x: Int, y: String, z: Char)
   object TestIntStringChar extends HasBuilder[TestIntStringChar] {
-    val isoContainer = createIsoContainer(apply _, unapply _)
+    val gen = Generic[TestIntStringChar]
 
     object X extends Param[Int]
     object Y extends Param[String]
@@ -57,7 +57,7 @@ object HasBuilderSpec {
   // Multiple optional parameters
   case class TestIntStringCharOptional(x: Int, y: String, z: Char)
   object TestIntStringCharOptional extends HasBuilder[TestIntStringCharOptional] {
-    val isoContainer = createIsoContainer(apply _, unapply _)
+    val gen = Generic[TestIntStringCharOptional]
 
     object X extends OptParam[Int](5)
     object Y extends OptParam[String]("5")
@@ -68,7 +68,7 @@ object HasBuilderSpec {
   // Fun with Option[_]...
   case class TestOptionString(x: Option[String])
   object TestOptionString extends HasBuilder[TestOptionString] {
-    val isoContainer = createIsoContainer.apply1(apply _, unapply _)
+    val gen = Generic[TestOptionString]
     
     object X extends Param[Option[String]]
     val fieldsContainer = createFieldsContainer(X :: HNil)
@@ -76,7 +76,7 @@ object HasBuilderSpec {
   
   case class TestOptionStringOptional(x: Option[String])
   object TestOptionStringOptional extends HasBuilder[TestOptionStringOptional] {
-    val isoContainer = createIsoContainer.apply1(apply _, unapply _)
+    val gen = Generic[TestOptionStringOptional]
     
     object X extends OptParam[Option[String]](None)
     val fieldsContainer = createFieldsContainer(X :: HNil)
@@ -85,7 +85,7 @@ object HasBuilderSpec {
   // Some more fun with Either[_] and Option[_]
   case class TestEither(x: Either[Int, String], y: Option[Either[Int, String]])
   object TestEither extends HasBuilder[TestEither] {
-    val isoContainer = createIsoContainer.apply(apply _, unapply _)
+    val gen = Generic[TestEither]
     
     object X extends Param[Either[Int, String]]
     object Y extends OptParam[Option[Either[Int, String]]](None)
@@ -93,7 +93,7 @@ object HasBuilderSpec {
   }
 }
 
-class HasBuilderSpec extends FlatSpec with ShouldMatchers {
+class HasBuilderSpec extends FlatSpec with Matchers {
   import HasBuilderSpec._
   "When method chaining is not used, a builder for a case class with a single required parameter" should "generate the expected case class" in {
     val expected = TestInt(42)
