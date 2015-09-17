@@ -17,6 +17,16 @@ object ShapelessBuilderBuild extends Build {
     settings(
       moduleName := "shapeless-builder"
     )
+    settings(
+      publishTo <<= version { (v: String) =>
+        val disposition = if ( v.trim.endsWith("SNAPSHOT") ) "snapshots" else "releases"
+        Some( Resolver.file("file", new File( Path.userHome.absolutePath + s"/jd/dev/dmrolfs.github.com/${disposition}" ) ) )
+        // if ( v.trim.endsWith("SNAPSHOT") ) Some( "snapshots" at nexus + "snapshots" )
+        // else Some( "releases" at nexus + "releases" )
+        // val nexus = "http://utility.allenai.org:8081/nexus/content/repositories/"
+        // val nexus = "http://utility.allenai.org:8081/nexus/content/repositories/"
+      }
+    )
   )
 
 
@@ -30,12 +40,14 @@ object ShapelessBuilderBuild extends Build {
 
   def commonSettings = 
     Seq(
-      organization := "org.aylasoftware",
+      organization := "com.github.dmrolfs",
       scalaVersion := "2.11.7",
       scalacOptions := Seq(
           "-feature",
           "-language:higherKinds",
           "-Xfatal-warnings",
+          // "-Xlog-implicits",
+          // "-Xprint:typer",
           "-deprecation",
           "-unchecked"
       ),
