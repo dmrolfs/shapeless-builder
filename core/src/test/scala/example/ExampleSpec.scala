@@ -1,5 +1,6 @@
 package example
 
+import scala.reflect.ClassTag
 import org.scalatest._
 import org.scalatest.matchers.ShouldMatchers
 import shapeless._
@@ -44,12 +45,13 @@ object ExampleSpec {
     def tag: Symbol
     def idLens: Lens[E, E#ID]
     def nameLens: Lens[E, String]
+    def target: Class[_]
   }
 
   object Module {
-    def builderFor[E <: Entity]: BuilderFactory[E] = new BuilderFactory[E]
+    def builderFor[E <: Entity : ClassTag]: BuilderFactory[E] = new BuilderFactory[E]
 
-    class BuilderFactory[E <: Entity] {
+    class BuilderFactory[E <: Entity : ClassTag] {
       type CC = ModuleImpl[E]
 
       def make[L <: HList]( implicit g: Generic.Aux[CC, L] ) = new ModuleBuilder[L]
@@ -57,35 +59,52 @@ object ExampleSpec {
 
       class ModuleBuilder[L <: HList]( implicit val g: Generic.Aux[CC, L] ) extends HasBuilder[CC] {
         object P {
-          object Tag extends Param[Symbol]
+          object Tag extends OptParam[Symbol]( 'DefaultFooTAG )
           object IdLens extends Param[Lens[E, E#ID]]
           object NameLens extends Param[Lens[E, String]]
         }
 
-        import P._
         override val gen = Generic[CC]
-        override val fieldsContainer = createFieldsContainer( Tag :: IdLens :: NameLens :: HNil )
+        override val fieldsContainer = createFieldsContainer( P.Tag :: P.IdLens :: P.NameLens :: HNil )
       }
+    }
+
+
+    // this sub-module is required to provide enough information for the compiler to generate a Generic value for this
+    // builder, which had difficulty with the E#TID type param of the idLens property.
+    // I couldn't repro this issue in an isolated manner, and the solution was crafted through lots of experiementation
+    // after digging through results from -Xlog-implicits and -Ymacro-debug-verbose.
+    object ModuleImpl {
+      type ID[E <: Entity] = E#ID
+    }
+
+    final case class ModuleImpl[E <: Entity : ClassTag](
+      override val tag: Symbol,
+      override val idLens: Lens[E, E#ID],
+      override val nameLens: Lens[E, String]
+    ) extends Module[E] {
+      override val target: Class[_] = implicitly[ClassTag[E]].runtimeClass
     }
   }
 
-  // this sub-module is required to provide enough information for the compiler to generate a Generic value for this
-  // builder, which had difficulty with the E#TID type param of the idLens property.
-  // I couldn't repro this issue in an isolated manner, and the solution was crafted through lots of experiementation
-  // after digging through results from -Xlog-implicits and -Ymacro-debug-verbose.
-  object ModuleImpl {
-    type ID[E <: Entity] = E#ID
-  }
 
-  final case class ModuleImpl[E <: Entity](
-    override val tag: Symbol,
-    override val idLens: Lens[E, E#ID],
-    override val nameLens: Lens[E, String]
-  ) extends Module[E]
+  object FooAggregateRoot {
+    val module: Module[Foo] = {
+      val b = Module.builderFor[Foo].make
+      import b.P.{ Tag => BTag, _ }
+
+      b.builder
+       .set( BTag, 'fooTAG )
+       .set( IdLens, Foo.idLens )
+       .set( NameLens, Foo.nameLens )
+       .build()
+    }
+  }
 }
 
 class ExampleSpec extends FlatSpec with Matchers {
   import ExampleSpec._
+  import Module.ModuleImpl
 
   "when building module" should "generate expected Module implementation" in {
     val expected = ModuleImpl[Foo]( tag = 'fooTAG, idLens = Foo.idLens, nameLens = Foo.nameLens )
@@ -93,6 +112,7 @@ class ExampleSpec extends FlatSpec with Matchers {
     val builder = Module.builderFor[Foo].make
     import builder.P._
 
+    // val g17: builder.gen.Repr = 17
     val module = builder.builder
                         .set( Tag, 'fooTAG )
                         .set( IdLens, Foo.idLens )
@@ -104,5 +124,9 @@ class ExampleSpec extends FlatSpec with Matchers {
     module.tag should equal( expected.tag )
     module.idLens.get(f) should equal( expected.idLens.get(f) )
     module.nameLens.get(f) should equal( expected.nameLens.get(f) )
+    module.target should equal( classOf[Foo] )
+    module.target should equal( expected.target )
+
+    FooAggregateRoot.module should equal( expected )
   }
 }
