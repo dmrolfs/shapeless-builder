@@ -4,6 +4,8 @@ import Keys._
 
 object ShapelessBuilderBuild extends Build {
 
+  val VERSION = "1.0.1"
+
   lazy val shapelessBuilder = (project in file(".")
     aggregate(core, examples)
     dependsOn(core, examples)
@@ -41,9 +43,12 @@ object ShapelessBuilderBuild extends Build {
 
   def commonSettings = 
     Seq(
+      version := VERSION,
       organization := "com.github.dmrolfs",
-      version := "1.0.0",
-      scalaVersion := "2.11.7",
+      description := "type safe builder pattern",
+      startYear := Some(2015),
+      scalaVersion := "2.12.1",
+      licenses += ("MIT", url("http://opensource.org/licenses/MIT")),
       scalacOptions := Seq(
           "-feature",
           "-language:higherKinds",
@@ -62,35 +67,38 @@ object ShapelessBuilderBuild extends Build {
       resolvers += Resolver.jcenterRepo,
 
       libraryDependencies ++= Seq(
-        "com.chuusai" %% "shapeless" % "2.2.5" withSources(),
-        "org.scalatest" % "scalatest_2.11" % "2.2.4" % "test"
+        "com.chuusai" %% "shapeless" % "2.3.2" withSources(),
+        "org.scalatest" %% "scalatest" % "3.0.1" % "test"
       )
     )
 
   def doNotPublishSettings = Seq(publish := {})
 
-  def publishSettings = if ( (version in ThisBuild).toString.endsWith("-SNAPSHOT") ) {
-    Seq(
-         publishTo := Some("Artifactory Realm" at "http://oss.jfrog.org/artifactory/oss-snapshot-local"),
-         // Only setting the credentials file if it exists (#52)
-         credentials := List(Path.userHome / ".bintray" / ".artifactory").filter(_.exists).map(Credentials(_))
-       )
-  } else {
-    Seq(
-      pomExtra := <scm>
-        <url>https://github.com</url>
-        <connection>https://github.com/dmrolfs/shapeless-builder.git</connection>
-      </scm>
-      <developers>
-        <developer>
-          <id>dmrolfs</id>
-          <name>Damon Rolfs</name>
-          <url>http://dmrolfs.github.io/</url>
-        </developer>
-      </developers>,
-      publishMavenStyle := true,
-      resolvers += Resolver.url("omen bintray resolver", url("http://dl.bintray.com/omen/maven"))(Resolver.ivyStylePatterns),
-      licenses := ("MIT", url("http://opensource.org/licenses/MIT")) :: Nil // this is required! otherwise Bintray will reject the code
-    )
+  def publishSettings = {
+    if ( VERSION.toString.endsWith("-SNAPSHOT") ) {
+      Seq(
+        publishTo := Some("Artifactory Realm" at "http://oss.jfrog.org/artifactory/oss-snapshot-local"),
+        publishMavenStyle := true,
+        // Only setting the credentials file if it exists (#52)
+        credentials := List(Path.userHome / ".bintray" / ".artifactory").filter(_.exists).map(Credentials(_))
+      )
+    } else {
+      Seq(
+        pomExtra := <scm>
+          <url>https://github.com</url>
+          <connection>https://github.com/dmrolfs/shapeless-builder.git</connection>
+        </scm>
+        <developers>
+          <developer>
+            <id>dmrolfs</id>
+            <name>Damon Rolfs</name>
+            <url>http://dmrolfs.github.io/</url>
+            </developer>
+        </developers>,
+        publishMavenStyle := true,
+        resolvers += Resolver.url("omen bintray resolver", url("http://dl.bintray.com/omen/maven"))(Resolver.ivyStylePatterns),
+        licenses := ("MIT", url("http://opensource.org/licenses/MIT")) :: Nil // this is required! otherwise Bintray will reject the code
+      )
+    }
   }
 }
